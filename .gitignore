@@ -1,0 +1,48 @@
+# --- Data ---
+# Keep folder structure (via .gitkeep) but ignore the contents.
+data/raw/*
+data/processed/*
+data/geo/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/geo/.gitkeep
+*.parquet
+*.duckdb
+*.duckdb.wal
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+.pytest_cache/
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- Environment ---
+.env
+.env.local
+
+# --- Streamlit ---
+.streamlit/secrets.toml
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Logs ---
+*.log
