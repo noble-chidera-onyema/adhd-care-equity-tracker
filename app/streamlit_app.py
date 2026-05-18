@@ -1,0 +1,135 @@
+"""
+ADHD Care Equity Tracker UK — Streamlit app entry.
+
+v0.1: visual shell with branded header, KPI strip (hardcoded for now),
+skeleton loader demo, footer. Data loading and view modules added next.
+
+Copyright (c) 2026 Noble Chidera Onyema. All Rights Reserved.
+See LICENSE and NOTICE.md in the project root.
+"""
+
+import streamlit as st
+
+from components.theme import apply_theme, kpi_card, skeleton
+
+# --- Page setup ---
+apply_theme()
+
+
+# --- Sidebar ---
+with st.sidebar:
+    st.markdown(
+        """
+        <div style="padding: 1rem 0.5rem 1.5rem 0.5rem;">
+            <div style="font-size: 1.125rem; font-weight: 700; color: #1F4E79;
+                        letter-spacing: -0.01em;">ACE</div>
+            <div style="font-size: 0.75rem; color: #555555; margin-top: 0.2rem;
+                        line-height: 1.4;">ADHD Care Equity<br>Tracker UK</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if st.button("Overview", key="nav_overview", use_container_width=True):
+        st.session_state["view"] = "overview"
+    if st.button("Waiting Times", key="nav_wait", use_container_width=True):
+        st.session_state["view"] = "waiting_times"
+    if st.button("Demographics", key="nav_demo", use_container_width=True):
+        st.session_state["view"] = "demographics"
+    if st.button("Trends", key="nav_trends", use_container_width=True):
+        st.session_state["view"] = "trends"
+    if st.button("Methodology", key="nav_method", use_container_width=True):
+        st.session_state["view"] = "methodology"
+
+    st.markdown(
+        """
+        <div style="margin-top: 3rem; padding: 1.5rem 0.5rem 0 0.5rem;
+                    border-top: 1px solid #E5E5E0;
+                    font-size: 0.75rem; color: #555555; line-height: 1.6;">
+            Noble Chidera Onyema<br>
+            MSc Applied AI portfolio<br>
+            <a href="https://github.com/noble-chidera-onyema/adhd-care-equity-tracker"
+               style="color: #1F4E79; text-decoration: none;">Source on GitHub</a>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+# --- Header ---
+st.markdown(
+    """
+    <div class="ace-header">
+        <div class="ace-brand">ADHD Care Equity Tracker UK</div>
+        <div class="ace-tagline">
+            A consolidation of public UK ADHD waiting-time data. Built on NHS England,
+            Children's Commissioner, OpenSAFELY, and Commons Library sources through May 2026.
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# --- KPI strip ---
+# Five anchor figures from the project. Hardcoded for v0.1; data loader replaces these next.
+KPI_VALUES = [
+    {
+        "label": "Open ADHD referrals, England",
+        "value": "562,480",
+        "note":  "MHSDS only, Dec 2025. Validated to the unit against NHS England.",
+    },
+    {
+        "label": "Total UK waiting list, estimated",
+        "value": "2.76M",
+        "note":  "MHSDS plus CHS SitRep, per Commons Library CBP-10551.",
+    },
+    {
+        "label": "Share waiting 104+ weeks",
+        "value": "35%",
+        "note":  "Up from 29% twelve months earlier.",
+    },
+    {
+        "label": "Female ADHD diagnosis growth, 9 years",
+        "value": "5.8x",
+        "note":  "OpenSAFELY, Apr 2016 to Mar 2025.",
+    },
+    {
+        "label": "Asian children, under-representation ratio",
+        "value": "~8 : 1",
+        "note":  "1.4% of ADHD referrals vs 12% of child population, CCO Oct 2024.",
+    },
+]
+
+cols = st.columns(5, gap="medium")
+for col, kpi in zip(cols, KPI_VALUES):
+    with col:
+        st.markdown(kpi_card(**kpi), unsafe_allow_html=True)
+
+
+# --- Loading state demo ---
+st.markdown('<div class="ace-section-title">Loading state preview</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="ace-section-intro">'
+    'Skeleton placeholders shown below replace blank states whenever real charts are loading. '
+    'Removed in production once data attaches.'
+    '</div>',
+    unsafe_allow_html=True,
+)
+
+st.markdown(skeleton("skeleton-chart"), unsafe_allow_html=True)
+
+
+# --- Footer ---
+st.markdown(
+    """
+    <div class="ace-footer">
+        ADHD Care Equity Tracker UK · Educational research artefact, not a clinical tool ·
+        © 2026 Noble Chidera Onyema. All Rights Reserved.
+        Data: NHS England, Children's Commissioner for England, OpenSAFELY, House of Commons Library.
+        Source code under All Rights Reserved licence;
+        <a href="https://github.com/noble-chidera-onyema/adhd-care-equity-tracker">repository</a>.
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
