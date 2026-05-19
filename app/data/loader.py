@@ -15,9 +15,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 PARQUET_PATH = PROJECT_ROOT / "data" / "processed" / "adhd_atlas_fact.parquet"
 
 
-# Project palette mirrored from theme.py — kept in sync manually because
-# data/loader.py is upstream of components/theme.py in the import graph
-# and we don't want a circular dependency.
 INK         = "#1A1A1A"
 INK_DIM     = "#555555"
 GRID        = "#E5E5E0"
@@ -31,7 +28,6 @@ PLOTLY_FONT = dict(
 
 
 def plotly_axis_style(title_text: str = "", tickformat: str = None) -> dict:
-    """Standard axis style — solid dark labels, light grid lines."""
     style = dict(
         title=dict(text=title_text, font=dict(color=INK, size=13)),
         tickfont=dict(color=INK_DIM, size=11),
@@ -69,6 +65,15 @@ WAITING_BAND_COLOURS = {
 }
 
 
+AGE_BAND_ORDER = [
+    "People aged 0 to 4",
+    "People aged 5 to 17",
+    "People aged 18 to 24",
+    "People aged 25+",
+    "People aged Unknown",
+]
+
+
 @st.cache_data(ttl=3600)
 def load_fact_table() -> pd.DataFrame:
     if not PARQUET_PATH.exists():
@@ -83,17 +88,13 @@ def load_fact_table() -> pd.DataFrame:
 
 @st.cache_data(ttl=3600)
 def data_freshness() -> dict:
-    """Latest data dates per source plus parquet file modification time."""
     df = load_fact_table()
-
     sources_latest = {}
     for src in ["mi_adhd", "opensafely", "cco", "commons_library"]:
         sub = df[df["source"] == src]
         if not sub.empty:
             sources_latest[src] = sub["date_start"].max()
-
     parquet_mtime = datetime.fromtimestamp(PARQUET_PATH.stat().st_mtime)
-
     return {
         "sources_latest": sources_latest,
         "parquet_built": parquet_mtime,
@@ -281,6 +282,79 @@ def chart_data_stock_vs_flow() -> pd.DataFrame:
     flow_pivot["net_flow"] = flow_pivot.get("ADHD007", 0) - flow_pivot.get("ADHD006", 0)
 
     out = stock.merge(flow_pivot[["date_start", "net_flow"]], on="date_start", how="left")
+    return out
+
+
+@st.cache_data(ttl=3600)
+def chart_data_age_distribution() -> pd.DataFrame:
+    """Open list (ADHD003) by age group at the latest date with full data."""
+    df = load_fact_table()
+    mask = (
+        (df["source"] == "mi_adhd")
+        & (df["measure_code"] == "ADHD003")
+        & (df["age_band_raw"].notna())
+    )
+    latest = df.loc[mask, "date_start"].max()
+    sub = df.loc[
+        mask & (df["date_start"] == latest),
+        ["age_band_raw", "value", "date_start"]
+    ].copy()
+    sub["age_band_raw"] = pd.Categorical(sub["age_band_raw"], categories=AGE_BAND_ORDER, ordered=True)
+    sub = sub.sort_values("age_band_raw")
+    total = sub["value"].sum()
+    sub["share"] = sub["value"] / total if total > 0 else 0
+    sub["age_band_short"] = sub["age_band_raw"].astype(str).str.replace("People aged ", "", regex=False)
+    return sub
+
+
+@st.cache_data(ttl=3600)
+def chart_data_ethnicity_distribution() -> pd.DataFrame:
+    """Open list (ADHD003) by ethnicity at the latest date with ethnicity breakdown."""
+    df = load_fact_table()
+    mask = (
+        (df["source"] == "mi_adhd")
+        & (df["measure_code"] == "ADHD003")
+        & (df["ethnicity_raw"].notna())
+    )
+    latest = df.loc[mask, "date_start"].max()
+    sub = df.loc[
+        mask & (df["date_start"] == latest),
+        ["ethnicity_raw", "value", "date_start"]
+    ].copy()
+    sub = sub.sort_values("value", ascending=True)
+    total = sub["value"].sum()
+    sub["share"] = sub["value"] / total if total > 0 else 0
+    return sub
+
+
+@st.cache_data(ttl=3600)
+def chart_data_ethnicity_disparity() -> pd.DataFrame:
+    """
+    Children's Commissioner p108 ADHD referral shares by ethnicity vs
+    Census 2021 child population shares. Excludes 'unknown' since Census has no
+    matching category. Sorted by under-representation (smallest ratio at top).
+    """
+    df = load_fact_table()
+    cco = df.loc[
+        (df["source"] == "cco")
+        & (df["measure_code"] == "ADHD_referral_share_by_ethnicity")
+    ].copy()
+
+    rows = []
+    for _, r in cco.iterrows():
+        coarse = r["ethnicity_coarse"]
+        if coarse == "unknown" or coarse not in CENSUS_2021_CHILD_SHARES:
+            continue
+        rows.append({
+            "ethnicity":               r["ethnicity_raw"],
+            "ethnicity_coarse":        coarse,
+            "adhd_referral_share":     float(r["value"]),
+            "child_population_share":  CENSUS_2021_CHILD_SHARES[coarse],
+        })
+
+    out = pd.DataFrame(rows)
+    out["under_rep_ratio"] = out["child_population_share"] / out["adhd_referral_share"]
+    out = out.sort_values("under_rep_ratio", ascending=False).reset_index(drop=True)
     return out
 
 

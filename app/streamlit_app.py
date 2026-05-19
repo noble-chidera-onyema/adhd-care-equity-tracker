@@ -1,7 +1,8 @@
 """
 ADHD Care Equity Tracker UK — Streamlit app entry.
 
-v0.6: data freshness banner added; axis styling fix applied across charts.
+v0.7: Demographics view wired (age distribution, ethnicity distribution,
+ethnicity disparity). Trends and Methodology still on placeholder.
 
 Copyright (c) 2026 Noble Chidera Onyema. All Rights Reserved.
 See LICENSE and NOTICE.md in the project root.
@@ -25,6 +26,7 @@ from data.loader import (
 )
 from views.overview import render as render_overview
 from views.waiting_times import render as render_waiting_times
+from views.demographics import render as render_demographics
 from views.placeholder import render as render_placeholder
 
 # --- Page setup ---
@@ -76,7 +78,7 @@ with st.sidebar:
     )
 
 
-# --- Header (shown on every view) ---
+# --- Header ---
 st.markdown(
     """
     <div class="ace-header">
@@ -120,7 +122,7 @@ st.markdown(
 )
 
 
-# --- KPI strip (shown on every view) ---
+# --- KPI strip ---
 k1 = kpi_open_referrals()
 k2 = kpi_total_waiting_list()
 k3 = kpi_share_104_weeks()
@@ -167,6 +169,8 @@ if view == "overview":
     render_overview()
 elif view == "waiting_times":
     render_waiting_times()
+elif view == "demographics":
+    render_demographics()
 else:
     render_placeholder(view)
 
