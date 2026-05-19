@@ -1,8 +1,9 @@
 """
 ADHD Care Equity Tracker UK — Streamlit app entry.
 
-v0.1: visual shell with branded header, KPI strip (hardcoded for now),
-skeleton loader demo, footer. Data loading and view modules added next.
+v0.4: data loader live (KPI strip + Chart 1 computed from harmonised parquet),
+sidebar nav now functional, Overview view shows the headline chart, four other
+views show in-development stubs.
 
 Copyright (c) 2026 Noble Chidera Onyema. All Rights Reserved.
 See LICENSE and NOTICE.md in the project root.
@@ -10,10 +11,29 @@ See LICENSE and NOTICE.md in the project root.
 
 import streamlit as st
 
-from components.theme import apply_theme, kpi_card, skeleton
+from components.theme import apply_theme, kpi_card
+from data.loader import (
+    kpi_open_referrals,
+    kpi_total_waiting_list,
+    kpi_share_104_weeks,
+    kpi_female_diagnosis_growth,
+    kpi_asian_underrepresentation,
+    fmt_count,
+    fmt_count_short,
+    fmt_pct,
+    fmt_multiplier,
+    fmt_ratio,
+)
+from views.overview import render as render_overview
+from views.placeholder import render as render_placeholder
 
 # --- Page setup ---
 apply_theme()
+
+
+# --- View routing ---
+if "view" not in st.session_state:
+    st.session_state["view"] = "overview"
 
 
 # --- Sidebar ---
@@ -56,7 +76,7 @@ with st.sidebar:
     )
 
 
-# --- Header ---
+# --- Header (shown on every view) ---
 st.markdown(
     """
     <div class="ace-header">
@@ -71,53 +91,53 @@ st.markdown(
 )
 
 
-# --- KPI strip ---
-# Five anchor figures from the project. Hardcoded for v0.1; data loader replaces these next.
-KPI_VALUES = [
+# --- KPI strip (shown on every view) ---
+k1 = kpi_open_referrals()
+k2 = kpi_total_waiting_list()
+k3 = kpi_share_104_weeks()
+k4 = kpi_female_diagnosis_growth()
+k5 = kpi_asian_underrepresentation()
+
+KPI_CARDS = [
     {
         "label": "Open ADHD referrals, England",
-        "value": "562,480",
-        "note":  "MHSDS only, Dec 2025. Validated to the unit against NHS England.",
+        "value": fmt_count(k1["value"]),
+        "note":  f"MHSDS, {k1['date'].strftime('%b %Y')}. Validated to the unit against NHS England.",
     },
     {
         "label": "Total UK waiting list, estimated",
-        "value": "2.76M",
+        "value": fmt_count_short(k2["value"]),
         "note":  "MHSDS plus CHS SitRep, per Commons Library CBP-10551.",
     },
     {
         "label": "Share waiting 104+ weeks",
-        "value": "35%",
+        "value": fmt_pct(k3["value"]),
         "note":  "Up from 29% twelve months earlier.",
     },
     {
         "label": "Female ADHD diagnosis growth, 9 years",
-        "value": "5.8x",
-        "note":  "OpenSAFELY, Apr 2016 to Mar 2025.",
+        "value": fmt_multiplier(k4["multiplier"]),
+        "note":  f"OpenSAFELY, {k4['first_date'].strftime('%b %Y')} to {k4['last_date'].strftime('%b %Y')}.",
     },
     {
         "label": "Asian children, under-representation ratio",
-        "value": "~8 : 1",
-        "note":  "1.4% of ADHD referrals vs 12% of child population, CCO Oct 2024.",
+        "value": fmt_ratio(k5["ratio"]),
+        "note":  f"{k5['referral_share_pct']:.1f}% of ADHD referrals vs ~{k5['census_share_pct']:.0f}% of child population, CCO Oct 2024.",
     },
 ]
 
 cols = st.columns(5, gap="medium")
-for col, kpi in zip(cols, KPI_VALUES):
+for col, kpi in zip(cols, KPI_CARDS):
     with col:
         st.markdown(kpi_card(**kpi), unsafe_allow_html=True)
 
 
-# --- Loading state demo ---
-st.markdown('<div class="ace-section-title">Loading state preview</div>', unsafe_allow_html=True)
-st.markdown(
-    '<div class="ace-section-intro">'
-    'Skeleton placeholders shown below replace blank states whenever real charts are loading. '
-    'Removed in production once data attaches.'
-    '</div>',
-    unsafe_allow_html=True,
-)
-
-st.markdown(skeleton("skeleton-chart"), unsafe_allow_html=True)
+# --- View content ---
+view = st.session_state["view"]
+if view == "overview":
+    render_overview()
+else:
+    render_placeholder(view)
 
 
 # --- Footer ---

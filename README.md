@@ -24,13 +24,17 @@ ADHD waiting time data in the UK is fragmented across multiple sources, three ju
 | `notebooks/04_uk_neurodev_consolidation.ipynb` | Children's Commissioner ND waiting times report (October 2024) | Complete; eleven tables extracted, demographic equity finding surfaced |
 | `notebooks/05_opensafely_and_commons_library.ipynb` | OpenSAFELY ADHD diagnosis and prescribing analysis (9-year series) + House of Commons Library briefing CBP-10551 | Complete; one prevalence trend chart |
 | `notebooks/06_harmonisation_duckdb.ipynb` | DuckDB join across all four data sources | Complete; 9,909-row fact table; validated to the unit |
+| `app/streamlit_app.py` | Streamlit dashboard, KPI strip and Overview view live | In progress (v0.4); Waiting Times, Demographics, Trends, Methodology views stubbed |
 
 ## What's planned
 
 | Component | Reason |
 |---|---|
-| `app/streamlit_app.py` | Interactive viewer over the harmonised fact table. Five views: Overview, Waiting Times, Demographics, Trends, Methodology. |
-| Deployment to Streamlit Community Cloud | Public access without local Python setup. |
+| `app/views/waiting_times.py` | Time-series view: chart 1 already in Overview, plus chart 2 (share by band) and chart 6 (stock vs flow reconciliation) |
+| `app/views/demographics.py` | Age, ethnicity, and gender breakdowns. Children's Commissioner ethnicity disparity centred. |
+| `app/views/trends.py` | OpenSAFELY 9-year diagnosis and prescribing trends |
+| `app/views/methodology.py` | Sources, definitions, data quality limitations, validation queries |
+| Deployment to Streamlit Community Cloud | Public access without local Python setup |
 
 ## Scope decisions worth flagging
 
@@ -43,13 +47,13 @@ ADHD waiting time data in the UK is fragmented across multiple sources, three ju
 All figures drawn from the source datasets listed above. Chart numbers refer to PNGs in `docs/screenshots/`.
 
 - **The open ADHD referral list in England grew from ~366,000 to ~562,000 over 12 months**, a 53% increase. ([Chart 1](docs/screenshots/chart_01_open_referrals_by_band.png))
-- **The 104+ weeks waiting band grew fastest** in both absolute terms and as a share of the total. By December 2025 it represented around 35% of the open list, up from 29% twelve months earlier. ([Chart 2](docs/screenshots/chart_02_share_by_band.png))
+- **The 104+ weeks waiting band grew fastest** in both absolute terms and as a share of the total. By December 2025 it represented around 37% of the open list, up from 29% twelve months earlier. ([Chart 2](docs/screenshots/chart_02_share_by_band.png))
 - **Adults aged 25+ are 52% of the open list.** ADHD is no longer accurately described as a primarily childhood condition. ([Chart 3](docs/screenshots/chart_03_open_referrals_by_age.png))
 - **22.8% of records have unknown or unstated ethnicity** in MI-ADHD, setting a ceiling on per-capita disparity analysis. ([Chart 4](docs/screenshots/chart_04_open_referrals_by_ethnicity.png))
 - **Inflow exceeds outflow in 11 of 13 months**, but published net flow accounts for only ~20% of the actual monthly change in the open list. The remaining ~80% (about 163,000 referrals over the period) is unexplained by published flow indicators. ([Chart 5](docs/screenshots/chart_05_inflow_outflow.png), [Chart 6](docs/screenshots/chart_06_stock_vs_flow_reconciliation.png))
 - **Roughly 1.9 million people in England may have ADHD but are not on the open referral list at all.** ([Chart 7](docs/screenshots/chart_07_prevalence_vs_referrals.png))
 - **The full UK ADHD waiting list is closer to 2.76 million.** MI-ADHD's published 562,480 captures only the Mental Health Services Dataset slice; Community Health Services SitRep adds another 2,197,176 children and young people, per House of Commons Library briefing CBP-10551 (December 2025 data).
-- **Asian children are under-represented in ADHD referrals by roughly 8:1 relative to population share.** 1.4% of ADHD referrals are Asian or Asian British (Children's Commissioner October 2024 report, p108) vs ~12% of the child population per Census 2021. The under-representation is sharpest for Asian children but present across most non-White groups.
+- **Asian children are under-represented in ADHD referrals by roughly 9:1 relative to population share.** 1.4% of ADHD referrals are Asian or Asian British (Children's Commissioner October 2024 report, p108) vs ~12% of the child population per Census 2021. The under-representation is sharpest for Asian children but present across most non-White groups.
 - **Recorded ADHD diagnosis rates in GP records have roughly tripled in nine years.** Female rate grew 5.8x (0.16% to 0.92%), male rate 2.3x (0.69% to 1.63%) between 2016/17 and 2024/25. Female rate in 2024/25 is approaching where the male rate sat in 2016/17. ([Chart 8](docs/screenshots/chart_08_opensafely_prevalence_trend.png))
 - **Median wait from ADHD diagnosis to first medication prescription for ages 10–17 doubled** from 18 weeks (2016/17) to 36 weeks (2024/25), per OpenSAFELY analysis.
 
@@ -99,6 +103,13 @@ jupyter lab
 
 Open the notebooks in numerical order. Notebooks 01 to 05 download their source data from NHS England and other publishers on first run. Notebook 06 reads the processed outputs of 02, 04, and 05.
 
+To run the dashboard locally:
+
+```bash
+cd app
+streamlit run streamlit_app.py
+```
+
 ## Project structure
 
 ```
@@ -107,6 +118,11 @@ adhd-care-equity-tracker/
 ├── notebooks/          six complete notebooks (01 to 06)
 ├── src/                shared pipeline modules
 ├── app/                Streamlit dashboard (in progress)
+│   ├── streamlit_app.py
+│   ├── components/     theme, KPI cards, skeleton loaders
+│   ├── views/          overview, placeholder, others to follow
+│   ├── data/           parquet loader, KPI computations, chart data
+│   └── assets/         favicon, future static assets
 ├── docs/               screenshots and source-of-truth chart PNGs
 ├── tests/
 ├── LICENSE             All Rights Reserved
