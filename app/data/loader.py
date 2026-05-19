@@ -95,10 +95,7 @@ def data_freshness() -> dict:
         if not sub.empty:
             sources_latest[src] = sub["date_start"].max()
     parquet_mtime = datetime.fromtimestamp(PARQUET_PATH.stat().st_mtime)
-    return {
-        "sources_latest": sources_latest,
-        "parquet_built": parquet_mtime,
-    }
+    return {"sources_latest": sources_latest, "parquet_built": parquet_mtime}
 
 
 # --- KPI computations ---
@@ -287,7 +284,6 @@ def chart_data_stock_vs_flow() -> pd.DataFrame:
 
 @st.cache_data(ttl=3600)
 def chart_data_age_distribution() -> pd.DataFrame:
-    """Open list (ADHD003) by age group at the latest date with full data."""
     df = load_fact_table()
     mask = (
         (df["source"] == "mi_adhd")
@@ -309,7 +305,6 @@ def chart_data_age_distribution() -> pd.DataFrame:
 
 @st.cache_data(ttl=3600)
 def chart_data_ethnicity_distribution() -> pd.DataFrame:
-    """Open list (ADHD003) by ethnicity at the latest date with ethnicity breakdown."""
     df = load_fact_table()
     mask = (
         (df["source"] == "mi_adhd")
@@ -329,11 +324,6 @@ def chart_data_ethnicity_distribution() -> pd.DataFrame:
 
 @st.cache_data(ttl=3600)
 def chart_data_ethnicity_disparity() -> pd.DataFrame:
-    """
-    Children's Commissioner p108 ADHD referral shares by ethnicity vs
-    Census 2021 child population shares. Excludes 'unknown' since Census has no
-    matching category. Sorted by under-representation (smallest ratio at top).
-    """
     df = load_fact_table()
     cco = df.loc[
         (df["source"] == "cco")
@@ -355,6 +345,64 @@ def chart_data_ethnicity_disparity() -> pd.DataFrame:
     out = pd.DataFrame(rows)
     out["under_rep_ratio"] = out["child_population_share"] / out["adhd_referral_share"]
     out = out.sort_values("under_rep_ratio", ascending=False).reset_index(drop=True)
+    return out
+
+
+@st.cache_data(ttl=3600)
+def chart_data_diagnosis_prevalence_by_sex() -> pd.DataFrame:
+    """OpenSAFELY annual ADHD diagnosis prevalence by sex. Population-weighted across age bands."""
+    df = load_fact_table()
+    sub = df.loc[
+        (df["source"] == "opensafely")
+        & (df["measure_code"] == "ADHD_recorded_prevalence")
+        & (df["sex"].isin(["male", "female"]))
+    ].copy()
+
+    sub["num"] = sub["value"] / 100.0 * sub["denominator"]
+    out = (
+        sub.groupby(["date_start", "sex"], as_index=False)
+           .agg(numerator=("num", "sum"), denominator=("denominator", "sum"))
+    )
+    out["rate_pct"] = out["numerator"] / out["denominator"] * 100
+    return out.sort_values(["sex", "date_start"]).reset_index(drop=True)
+
+
+@st.cache_data(ttl=3600)
+def chart_data_medication_6month_by_sex() -> pd.DataFrame:
+    """OpenSAFELY 6-month rolling medication prevalence among diagnosed, by sex."""
+    df = load_fact_table()
+    sub = df.loc[
+        (df["source"] == "opensafely")
+        & (df["measure_code"] == "ADHD_patients_with_medication_prev_6_months")
+        & (df["sex"].isin(["male", "female"]))
+    ].copy()
+
+    sub["num"] = sub["value"] / 100.0 * sub["denominator"]
+    out = (
+        sub.groupby(["date_start", "sex"], as_index=False)
+           .agg(numerator=("num", "sum"), denominator=("denominator", "sum"))
+    )
+    out["rate_pct"] = out["numerator"] / out["denominator"] * 100
+    return out.sort_values(["sex", "date_start"]).reset_index(drop=True)
+
+
+@st.cache_data(ttl=3600)
+def chart_data_time_to_prescription() -> pd.DataFrame:
+    """
+    OpenSAFELY median weeks from ADHD diagnosis to first prescription,
+    by age band over years. Mean of male and female medians for display.
+    """
+    df = load_fact_table()
+    sub = df.loc[
+        (df["source"] == "opensafely")
+        & (df["measure_code"] == "Median_time_diagnosis_to_medication_weeks")
+        & (df["age_band_raw"].notna())
+    ].copy()
+
+    out = (
+        sub.groupby(["date_start", "age_band_raw"], as_index=False)
+           .agg(weeks=("value", "mean"))
+    )
     return out
 
 

@@ -214,7 +214,7 @@ def _render_disparity():
             "ticksuffix": "%",
             "range": [0, max(data["child_population_share"].max(), data["adhd_referral_share"].max()) * 1.18],
         },
-        yaxis=plotly_axis_style(title_text=""),
+        yaxis={**plotly_axis_style(title_text=""), "autorange": "reversed"},
     )
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 

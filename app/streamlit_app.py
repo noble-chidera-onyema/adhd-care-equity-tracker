@@ -1,8 +1,8 @@
 """
 ADHD Care Equity Tracker UK — Streamlit app entry.
 
-v0.7: Demographics view wired (age distribution, ethnicity distribution,
-ethnicity disparity). Trends and Methodology still on placeholder.
+v0.8: Trends view wired (diagnosis prevalence, 6-month medication, time to
+prescription). Only Methodology still on placeholder.
 
 Copyright (c) 2026 Noble Chidera Onyema. All Rights Reserved.
 See LICENSE and NOTICE.md in the project root.
@@ -27,6 +27,7 @@ from data.loader import (
 from views.overview import render as render_overview
 from views.waiting_times import render as render_waiting_times
 from views.demographics import render as render_demographics
+from views.trends import render as render_trends
 from views.placeholder import render as render_placeholder
 
 # --- Page setup ---
@@ -171,6 +172,8 @@ elif view == "waiting_times":
     render_waiting_times()
 elif view == "demographics":
     render_demographics()
+elif view == "trends":
+    render_trends()
 else:
     render_placeholder(view)
 
