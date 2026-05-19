@@ -1,8 +1,8 @@
 """
 ADHD Care Equity Tracker UK — Streamlit app entry.
 
-v0.8: Trends view wired (diagnosis prevalence, 6-month medication, time to
-prescription). Only Methodology still on placeholder.
+v0.9: Methodology view wired. All five views now live. Dashboard
+feature-complete. Next: deployment to Streamlit Community Cloud.
 
 Copyright (c) 2026 Noble Chidera Onyema. All Rights Reserved.
 See LICENSE and NOTICE.md in the project root.
@@ -28,7 +28,7 @@ from views.overview import render as render_overview
 from views.waiting_times import render as render_waiting_times
 from views.demographics import render as render_demographics
 from views.trends import render as render_trends
-from views.placeholder import render as render_placeholder
+from views.methodology import render as render_methodology
 
 # --- Page setup ---
 apply_theme()
@@ -174,8 +174,8 @@ elif view == "demographics":
     render_demographics()
 elif view == "trends":
     render_trends()
-else:
-    render_placeholder(view)
+elif view == "methodology":
+    render_methodology()
 
 
 # --- Footer ---
