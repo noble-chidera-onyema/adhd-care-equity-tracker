@@ -1,9 +1,5 @@
 """
-app/views/overview.py — Overview view for the dashboard.
-
-Renders the project's headline chart (open ADHD referrals by waiting band)
-live from the harmonised fact table. Future scope: chart 2 (share by band)
-and chart 7 (prevalence vs referrals) added here as additional sections.
+app/views/overview.py — Overview view.
 
 Copyright (c) 2026 Noble Chidera Onyema. All Rights Reserved.
 """
@@ -13,14 +9,14 @@ import streamlit as st
 
 from data.loader import (
     chart_data_open_referrals_by_band,
+    plotly_axis_style,
+    PLOTLY_FONT,
     WAITING_BAND_ORDER,
     WAITING_BAND_COLOURS,
 )
 
 
 def render():
-    """Render the Overview view content. KPI strip is rendered at app level."""
-
     st.markdown(
         '<div class="ace-section-title">Open ADHD referrals by waiting band, England</div>',
         unsafe_allow_html=True,
@@ -50,28 +46,19 @@ def render():
         margin=dict(l=10, r=10, t=10, b=10),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(
-            family='-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            color="#1A1A1A",
-        ),
+        font=PLOTLY_FONT,
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=-0.18,
+            y=-0.22,
             xanchor="left",
             x=0,
             title_text="",
+            font=dict(size=12, color="#1A1A1A"),
         ),
         hovermode="x unified",
-        xaxis=dict(
-            showgrid=False,
-            tickformat="%b %Y",
-        ),
-        yaxis=dict(
-            tickformat=",",
-            gridcolor="#E5E5E0",
-            zeroline=False,
-        ),
+        xaxis=plotly_axis_style(title_text="Month", tickformat="%b %Y"),
+        yaxis=plotly_axis_style(title_text="Open referrals", tickformat=","),
     )
 
     st.plotly_chart(

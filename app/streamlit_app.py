@@ -1,9 +1,7 @@
 """
 ADHD Care Equity Tracker UK — Streamlit app entry.
 
-v0.4: data loader live (KPI strip + Chart 1 computed from harmonised parquet),
-sidebar nav now functional, Overview view shows the headline chart, four other
-views show in-development stubs.
+v0.6: data freshness banner added; axis styling fix applied across charts.
 
 Copyright (c) 2026 Noble Chidera Onyema. All Rights Reserved.
 See LICENSE and NOTICE.md in the project root.
@@ -13,6 +11,7 @@ import streamlit as st
 
 from components.theme import apply_theme, kpi_card
 from data.loader import (
+    data_freshness,
     kpi_open_referrals,
     kpi_total_waiting_list,
     kpi_share_104_weeks,
@@ -25,6 +24,7 @@ from data.loader import (
     fmt_ratio,
 )
 from views.overview import render as render_overview
+from views.waiting_times import render as render_waiting_times
 from views.placeholder import render as render_placeholder
 
 # --- Page setup ---
@@ -91,6 +91,35 @@ st.markdown(
 )
 
 
+# --- Data freshness banner ---
+fresh = data_freshness()
+SOURCE_PRETTY = {
+    "mi_adhd":         "NHS England MI-ADHD",
+    "opensafely":      "OpenSAFELY",
+    "cco":             "Children's Commissioner",
+    "commons_library": "Commons Library CBP-10551",
+}
+
+freshness_parts = []
+for src_key, src_name in SOURCE_PRETTY.items():
+    latest = fresh["sources_latest"].get(src_key)
+    if latest is not None:
+        freshness_parts.append(f"<strong>{src_name}</strong> through {latest.strftime('%b %Y')}")
+
+freshness_html = " · ".join(freshness_parts)
+parquet_str = fresh["parquet_built"].strftime("%d %b %Y")
+
+st.markdown(
+    f"""
+    <div class="ace-freshness">
+        {freshness_html}<br>
+        Harmonised fact table built {parquet_str}. Data refreshes when source publishers release new files.
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
 # --- KPI strip (shown on every view) ---
 k1 = kpi_open_referrals()
 k2 = kpi_total_waiting_list()
@@ -136,6 +165,8 @@ for col, kpi in zip(cols, KPI_CARDS):
 view = st.session_state["view"]
 if view == "overview":
     render_overview()
+elif view == "waiting_times":
+    render_waiting_times()
 else:
     render_placeholder(view)
 

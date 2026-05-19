@@ -1,7 +1,5 @@
 """
 Visual identity for ADHD Care Equity Tracker UK (ACE).
-Locks palette, typography, CSS injection, page configuration.
-Imported once at the top of streamlit_app.py.
 
 Copyright (c) 2026 Noble Chidera Onyema. All Rights Reserved.
 """
@@ -10,8 +8,6 @@ from pathlib import Path
 import streamlit as st
 
 
-# Project palette. Locked. Matches notebook 03 chart colours so PNGs and
-# in-app charts share a single visual language.
 PALETTE = {
     "bg":               "#FAFAF8",
     "surface":          "#FFFFFF",
@@ -21,13 +17,11 @@ PALETTE = {
     "navy":             "#1F4E79",
     "navy_dim":         "#3B6FA0",
 
-    # Waiting-band scale — green, amber, orange, red — identical to chart 1/2
     "band_short":       "#2E7D32",
     "band_mid":         "#FBC02D",
     "band_long":        "#EF6C00",
     "band_extreme":     "#C62828",
 
-    # Skeleton shimmer
     "skeleton_bg":      "#EDEDE8",
     "skeleton_shimmer": "#F5F5F0",
 }
@@ -36,15 +30,12 @@ ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 
 
 def apply_theme():
-    """Call once at the top of streamlit_app.py, before any other Streamlit calls."""
-
     st.set_page_config(
         page_title="ACE | ADHD Care Equity Tracker UK",
         page_icon=str(ASSETS_DIR / "favicon.svg"),
         layout="wide",
         initial_sidebar_state="expanded",
     )
-
     st.markdown(_css(), unsafe_allow_html=True)
 
 
@@ -56,6 +47,10 @@ def _css() -> str:
     /* === Hide Streamlit default chrome === */
     #MainMenu {{visibility: hidden;}}
     .stDeployButton {{display: none;}}
+    [data-testid="stDeployButton"] {{display: none;}}
+    [data-testid="stToolbar"] {{display: none;}}
+    button[kind="header"] {{display: none;}}
+    .viewerBadge_container__1QSob {{display: none !important;}}
     footer {{visibility: hidden;}}
     header[data-testid="stHeader"] {{
         background: transparent;
@@ -120,7 +115,7 @@ def _css() -> str:
     .ace-header {{
         padding: 1rem 0 1.75rem 0;
         border-bottom: 1px solid {p['border']};
-        margin-bottom: 2rem;
+        margin-bottom: 1.25rem;
     }}
 
     .ace-brand {{
@@ -135,6 +130,24 @@ def _css() -> str:
         font-size: 0.95rem;
         color: {p['ink_dim']};
         margin-top: 0.4rem;
+    }}
+
+    /* === Data freshness banner === */
+    .ace-freshness {{
+        background: {p['surface']};
+        border: 1px solid {p['border']};
+        border-left: 3px solid {p['navy']};
+        border-radius: 4px;
+        padding: 0.6rem 1rem;
+        margin-bottom: 1.75rem;
+        font-size: 0.85rem;
+        color: {p['ink_dim']};
+        line-height: 1.45;
+    }}
+
+    .ace-freshness strong {{
+        color: {p['ink']};
+        font-weight: 600;
     }}
 
     /* === KPI card === */
@@ -260,7 +273,6 @@ def _css() -> str:
 
 
 def kpi_card(label: str, value: str, note: str = "") -> str:
-    """Return HTML string for a KPI card. Caller wraps with st.markdown(unsafe_allow_html=True)."""
     note_html = f'<div class="kpi-note">{note}</div>' if note else ""
     return f"""
     <div class="kpi-card">
@@ -272,5 +284,4 @@ def kpi_card(label: str, value: str, note: str = "") -> str:
 
 
 def skeleton(height_class: str = "skeleton-kpi") -> str:
-    """Return HTML for a skeleton loader. height_class is one of 'skeleton-kpi', 'skeleton-chart'."""
     return f'<div class="skeleton {height_class}"></div>'

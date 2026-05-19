@@ -2,13 +2,11 @@
 app/data/loader.py — reads the harmonised fact table and exposes
 helper functions for the dashboard.
 
-Functions are wrapped with @st.cache_data so the parquet is read once per
-process and shared across all user sessions on the same Streamlit container.
-
 Copyright (c) 2026 Noble Chidera Onyema. All Rights Reserved.
 """
 
 from pathlib import Path
+from datetime import datetime
 import pandas as pd
 import streamlit as st
 
@@ -17,8 +15,36 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 PARQUET_PATH = PROJECT_ROOT / "data" / "processed" / "adhd_atlas_fact.parquet"
 
 
-# Census 2021 child ethnic-group shares for England, approximate.
-# Used as the denominator side of the disparity ratio.
+# Project palette mirrored from theme.py — kept in sync manually because
+# data/loader.py is upstream of components/theme.py in the import graph
+# and we don't want a circular dependency.
+INK         = "#1A1A1A"
+INK_DIM     = "#555555"
+GRID        = "#E5E5E0"
+NAVY        = "#1F4E79"
+
+PLOTLY_FONT = dict(
+    family='-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    color=INK,
+    size=12,
+)
+
+
+def plotly_axis_style(title_text: str = "", tickformat: str = None) -> dict:
+    """Standard axis style — solid dark labels, light grid lines."""
+    style = dict(
+        title=dict(text=title_text, font=dict(color=INK, size=13)),
+        tickfont=dict(color=INK_DIM, size=11),
+        showgrid=False,
+        gridcolor=GRID,
+        zeroline=False,
+        linecolor=GRID,
+    )
+    if tickformat is not None:
+        style["tickformat"] = tickformat
+    return style
+
+
 CENSUS_2021_CHILD_SHARES = {
     "white": 73.0,
     "asian": 12.0,
@@ -28,7 +54,6 @@ CENSUS_2021_CHILD_SHARES = {
 }
 
 
-# Waiting-band labels and chart-friendly order. Matches notebook 03 Chart 1.
 WAITING_BAND_MAP = {
     "ADHD003a": "Up to 13 weeks",
     "ADHD003b": "13 to 52 weeks",
@@ -46,7 +71,6 @@ WAITING_BAND_COLOURS = {
 
 @st.cache_data(ttl=3600)
 def load_fact_table() -> pd.DataFrame:
-    """Load the harmonised fact table from data/processed/. Cached one hour."""
     if not PARQUET_PATH.exists():
         raise FileNotFoundError(
             f"adhd_atlas_fact.parquet not found at {PARQUET_PATH}. "
@@ -55,11 +79,31 @@ def load_fact_table() -> pd.DataFrame:
     return pd.read_parquet(PARQUET_PATH)
 
 
+# --- Data freshness ---
+
+@st.cache_data(ttl=3600)
+def data_freshness() -> dict:
+    """Latest data dates per source plus parquet file modification time."""
+    df = load_fact_table()
+
+    sources_latest = {}
+    for src in ["mi_adhd", "opensafely", "cco", "commons_library"]:
+        sub = df[df["source"] == src]
+        if not sub.empty:
+            sources_latest[src] = sub["date_start"].max()
+
+    parquet_mtime = datetime.fromtimestamp(PARQUET_PATH.stat().st_mtime)
+
+    return {
+        "sources_latest": sources_latest,
+        "parquet_built": parquet_mtime,
+    }
+
+
 # --- KPI computations ---
 
 @st.cache_data(ttl=3600)
 def kpi_open_referrals() -> dict:
-    """Open ADHD referrals (ADHD003) from MI-ADHD at the latest date with full data."""
     df = load_fact_table()
     mask = (
         (df["source"] == "mi_adhd")
@@ -73,7 +117,6 @@ def kpi_open_referrals() -> dict:
 
 @st.cache_data(ttl=3600)
 def kpi_total_waiting_list() -> dict:
-    """Combined MHSDS + CHS waiting list, from Commons Library CBP-10551."""
     df = load_fact_table()
     mask = (
         (df["source"] == "commons_library")
@@ -87,7 +130,6 @@ def kpi_total_waiting_list() -> dict:
 
 @st.cache_data(ttl=3600)
 def kpi_share_104_weeks() -> dict:
-    """Share of open list waiting 104+ weeks at the latest date."""
     df = load_fact_table()
     mask_total = (
         (df["source"] == "mi_adhd")
@@ -111,7 +153,6 @@ def kpi_share_104_weeks() -> dict:
 
 @st.cache_data(ttl=3600)
 def kpi_female_diagnosis_growth() -> dict:
-    """Female ADHD diagnosis rate growth multiplier, OpenSAFELY 9-year series."""
     df = load_fact_table()
     sub = df.loc[
         (df["source"] == "opensafely")
@@ -143,7 +184,6 @@ def kpi_female_diagnosis_growth() -> dict:
 
 @st.cache_data(ttl=3600)
 def kpi_asian_underrepresentation() -> dict:
-    """Asian children under-representation: Census share divided by referral share."""
     df = load_fact_table()
     row = df.loc[
         (df["source"] == "cco")
@@ -167,10 +207,6 @@ def kpi_asian_underrepresentation() -> dict:
 
 @st.cache_data(ttl=3600)
 def chart_data_open_referrals_by_band() -> pd.DataFrame:
-    """
-    Time series of open ADHD referrals by waiting band, England.
-    One row per (date, band). Summed across age groups.
-    """
     df = load_fact_table()
     sub = df.loc[
         (df["source"] == "mi_adhd")
@@ -185,17 +221,78 @@ def chart_data_open_referrals_by_band() -> pd.DataFrame:
     return out
 
 
+@st.cache_data(ttl=3600)
+def chart_data_share_by_band() -> pd.DataFrame:
+    raw = chart_data_open_referrals_by_band()
+    totals = (
+        raw.groupby("date_start", as_index=False)["value"].sum()
+           .rename(columns={"value": "total"})
+    )
+    out = raw.merge(totals, on="date_start")
+    out["share"] = out["value"] / out["total"]
+    return out
+
+
+@st.cache_data(ttl=3600)
+def chart_data_inflow_outflow() -> pd.DataFrame:
+    df = load_fact_table()
+    sub = df.loc[
+        (df["source"] == "mi_adhd")
+        & (df["measure_code"].isin(["ADHD006", "ADHD007"]))
+        & (df["age_band_raw"].notna())
+    ]
+    out = (
+        sub.groupby(["date_start", "measure_code"], as_index=False)
+           .agg(value=("value", "sum"))
+    )
+    out["flow"] = out["measure_code"].map({
+        "ADHD007": "New referrals received (inflow)",
+        "ADHD006": "Referrals closed (outflow)",
+    })
+    return out
+
+
+@st.cache_data(ttl=3600)
+def chart_data_stock_vs_flow() -> pd.DataFrame:
+    df = load_fact_table()
+
+    stock = (
+        df.loc[
+            (df["source"] == "mi_adhd")
+            & (df["measure_code"] == "ADHD003")
+            & (df["age_band_raw"].notna())
+        ]
+        .groupby("date_start", as_index=False)["value"]
+        .sum()
+        .rename(columns={"value": "open_list"})
+    )
+    stock["observed_change"] = stock["open_list"].diff()
+
+    flow = (
+        df.loc[
+            (df["source"] == "mi_adhd")
+            & (df["measure_code"].isin(["ADHD006", "ADHD007"]))
+            & (df["age_band_raw"].notna())
+        ]
+        .groupby(["date_start", "measure_code"], as_index=False)["value"]
+        .sum()
+    )
+    flow_pivot = flow.pivot(index="date_start", columns="measure_code", values="value").reset_index()
+    flow_pivot["net_flow"] = flow_pivot.get("ADHD007", 0) - flow_pivot.get("ADHD006", 0)
+
+    out = stock.merge(flow_pivot[["date_start", "net_flow"]], on="date_start", how="left")
+    return out
+
+
 # --- Formatters for display ---
 
 def fmt_count(n) -> str:
-    """562480 -> '562,480'."""
     if n is None:
         return "—"
     return f"{n:,}"
 
 
 def fmt_count_short(n) -> str:
-    """2759626 -> '2.76M', 562480 -> '562K'."""
     if n is None:
         return "—"
     if n >= 1_000_000:
@@ -206,21 +303,18 @@ def fmt_count_short(n) -> str:
 
 
 def fmt_pct(x, decimals: int = 0) -> str:
-    """0.348 -> '35%'."""
     if x is None:
         return "—"
     return f"{x * 100:.{decimals}f}%"
 
 
 def fmt_multiplier(x, decimals: int = 1) -> str:
-    """5.77 -> '5.8x'."""
     if x is None:
         return "—"
     return f"{x:.{decimals}f}x"
 
 
 def fmt_ratio(x) -> str:
-    """8.57 -> '~9 : 1'."""
     if x is None:
         return "—"
     return f"~{round(x)} : 1"
